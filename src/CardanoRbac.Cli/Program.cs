@@ -4,13 +4,16 @@ using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.IO;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using NJsonSchema;
 
 namespace CardanoRbac.Cli
 {
     class Program
     {
-        public static Stream _inputStream = null;
+        public static Stream? _inputStream = null;
 
         static async Task<int> Main(string[] args)
         {
@@ -39,8 +42,52 @@ namespace CardanoRbac.Cli
                     throw new Exception("No input provided.");
                 }
 
-                string isStreamNull = _inputStream == null ? "null" : "not-null";
-                Console.WriteLine($"The value for _inputStrean is: {isStreamNull}");
+                using JsonDocument document = JsonDocument.Parse(_inputStream);
+                JsonElement root = document.RootElement;
+                JsonElement schemaElement = root.GetProperty("$schema");
+                string schemaId = schemaElement.GetString() ?? "";
+
+                string? schemaUrl = null;
+                if (schemaId.Equals(RbacSchemas.POLICY_DRAFT, StringComparison.OrdinalIgnoreCase))
+                {
+                    schemaUrl = RbacSchemas.POLICY_DRAFT;
+                }
+                else if (schemaId.Equals(RbacSchemas.TX_DRAFT, StringComparison.OrdinalIgnoreCase))
+                {
+                    schemaUrl = RbacSchemas.TX_DRAFT;
+                }
+                else
+                {
+                    Console.WriteLine("$schema is not valid. To get a list of valid schemas, run: crbac schema list");
+                    Console.WriteLine("$schema: " + schemaId);
+                }
+
+                if (schemaUrl != null)
+                {
+                    var schema = await JsonSchema.FromUrlAsync(schemaUrl);
+                    using var stream = new MemoryStream();
+                    using var writer = new Utf8JsonWriter(stream);
+                    document.WriteTo(writer);
+                    writer.Flush();
+                    string jsonText = Encoding.UTF8.GetString(stream.ToArray());
+
+                    var validationResult = schema.Validate(jsonText);
+
+                    if (validationResult.Count > 0)
+                    {
+                        foreach (var validationError in validationResult)
+                        {
+                            if (validationError != null)
+                            {
+                                Console.WriteLine(validationError.ToString());
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Document is valid.");
+                    }
+                }
             });
             rootCommand.Add(validateCommand);
 
