@@ -24,7 +24,7 @@ namespace CardanoRbac.Cli
             {
                 new Option<FileInfo>(
                     "--file",
-                    "An option whose argument is parsed as a FileInfo"
+                    "The JSON file to validate."
                 ).ExistingOnly(),
             };
             validateCommand.Description = "Validate an RBAC policy file.";
@@ -58,6 +58,32 @@ namespace CardanoRbac.Cli
                 }
             });
             rootCommand.Add(validateCommand);
+
+            var queryCommand = new Command("query")
+            {
+                new Option<FileInfo>(
+                    "--file",
+                    "The JSON file to query."
+                ).ExistingOnly(),
+            };
+            queryCommand.Description = "Query an RBAC policy file.";
+            queryCommand.Handler = CommandHandler.Create<FileInfo>(async file =>
+            {
+                if (file != null)
+                {
+                    _inputStream = File.OpenRead(file.FullName);
+                }
+
+                if (_inputStream == null)
+                {
+                    throw new Exception("No input provided.");
+                }
+
+                var policy = await RbacPolicy.FromJsonAsync(_inputStream);
+
+                Console.WriteLine("URN: " + policy.Urn);
+            });
+            rootCommand.Add(queryCommand);
 
             var commandLineBuilder = new CommandLineBuilder(rootCommand);
             commandLineBuilder.UseMiddleware(async (context, next) =>

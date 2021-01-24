@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using NJsonSchema;
 
@@ -22,10 +22,21 @@ namespace CardanoRbac
         public PermissionSubjects[] PermissionSubjects { get; set; }
         public RbacRole[] Roles { get; set; }
 
-        //public static async Task<RbacPolicy> FromJsonAsync()
-        //{
+        public static async Task<RbacPolicy> FromJsonAsync(Stream utf8Json)
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters =
+                {
+                    new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
+                }
+            };
 
-        //}
+#pragma warning disable CS8603 // Possible null reference return.
+            return await JsonSerializer.DeserializeAsync<RbacPolicy>(utf8Json, options);
+#pragma warning restore CS8603 // Possible null reference return.
+        }
 
         public static async Task<IEnumerable<ValidationError>> ValidateAsync(Stream utf8Json)
         {
