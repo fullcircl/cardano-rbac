@@ -4,6 +4,7 @@ using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,35 +12,55 @@ namespace CardanoRbac.Cli
 {
     class Program
     {
+        private static Stream _inputStream = null;
+
         static async Task<int> Main(string[] args)
         {
             var rootCommand = new RootCommand
             {
-                new Option<FileInfo>(
-                    "--policy-file",
-                    "An option whose argument is parsed as a FileInfo")
             };
 
-            rootCommand.Handler = CommandHandler.Create(
-                async (ParseResult parseResult, IConsole console) =>
+            var validateCommand = new Command("validate")
+            {
+                new Option<FileInfo>(
+                    "--file",
+                    "An option whose argument is parsed as a FileInfo"
+                ).ExistingOnly()
+            };
+            validateCommand.Handler =
+                CommandHandler.Create<FileInfo>(async (fileInfo) =>
                 {
-                    if (console.IsInputRedirected)
+                    if (fileInfo != null)
                     {
-                        string stdin = await ReadStdInputAsync();
-                        console.Out.Write($"{stdin}");
+                        _inputStream = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read);
                     }
-                    else
+
+                    if (_inputStream == null)
                     {
-                        using (StreamReader sr = new StreamReader(new FileStream(parseResult.ValueForOption<FileInfo>("--policy-file").FullName, FileMode.Open, FileAccess.Read)))
-                        {
-                            string fileIn = await sr.ReadToEndAsync();
-                            console.Out.Write($"{fileIn}");
-                        }
+                        throw new Exception(nameof(fileInfo));
+                    }
+
+                    using (StreamReader sr = new StreamReader(_inputStream))
+                    {
+                        Console.Out.Write(await sr.ReadToEndAsync());
                     }
                 });
+            rootCommand.Add(validateCommand);
 
-            // Parse the incoming args and invoke the handler
-            return await rootCommand.InvokeAsync(args);
+            var commandLineBuilder = new CommandLineBuilder(rootCommand);
+            commandLineBuilder.UseMiddleware(async (context, next) =>
+            {
+                if (context.Console.IsInputRedirected)
+                {
+                    _inputStream = Console.OpenStandardInput();
+                }
+
+                await next(context);
+            });
+
+            commandLineBuilder.UseDefaults();
+            var parser = commandLineBuilder.Build();
+            return await parser.InvokeAsync(args);
         }
 
         private static async Task<string> ReadStdInputAsync()
