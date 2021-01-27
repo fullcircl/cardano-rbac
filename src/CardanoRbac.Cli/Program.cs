@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using CardanoRbac.Cli.Extensions;
 
 namespace CardanoRbac.Cli
 {
@@ -65,10 +69,18 @@ namespace CardanoRbac.Cli
                     "--file",
                     "The JSON file to query."
                 ).ExistingOnly(),
+                new Option<Uri>(
+                    "--subject",
+                    "Find all permission and roles assiciated with a subject"
+                ),
+                new Option<string>(
+                    "--resource",
+                    "Find all permission and roles assiciated with a resource"
+                ),
             };
             queryCommand.Description = "Query an RBAC policy file.";
-            queryCommand.Handler = CommandHandler.Create<FileInfo>(async file =>
-            {
+            queryCommand.Handler = CommandHandler.Create<FileInfo, Uri?, string?>(async (file, subject, resource) =>
+            { 
                 if (file != null)
                 {
                     _inputStream = File.OpenRead(file.FullName);
@@ -81,7 +93,48 @@ namespace CardanoRbac.Cli
 
                 var policy = await RbacPolicy.FromJsonAsync(_inputStream);
 
-                Console.WriteLine("URN: " + policy.Urn);
+                IEnumerable<PermissionSubjects> permissions = policy.PermissionSubjects;
+
+                if (subject != null)
+                {
+                    permissions = permissions.Where(p => p.Subjects.Any(s => s == subject));
+                }
+                if (resource != null)
+                {
+                    permissions = permissions.Where(p => p.Permission.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase));
+                }
+
+                IEnumerable<RbacRole> roles = policy.Roles.Traverse(r => r.Roles);
+
+                if (subject != null)
+                {
+                    roles = roles.Where(r => r.Subjects.Any(s => s == subject));
+                }
+                if (resource != null)
+                {
+                    roles = roles.Where(r => r.Permissions.Any(p => p.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)));
+                }
+
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters =
+                    {
+                        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
+                    }
+                };
+
+                Console.WriteLine("Permissions:");
+                foreach (var permission in permissions)
+                {
+                    Console.WriteLine(JsonSerializer.Serialize(permission, options));
+                }
+
+                Console.WriteLine(Environment.NewLine + "Roles:");
+                foreach (var role in roles)
+                {
+                    Console.WriteLine(JsonSerializer.Serialize(role, options));
+                }
             });
             rootCommand.Add(queryCommand);
 
