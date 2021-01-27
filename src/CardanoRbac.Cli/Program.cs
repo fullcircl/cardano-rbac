@@ -9,7 +9,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using CardanoRbac.Cli.Extensions;
 
 namespace CardanoRbac.Cli
 {
@@ -93,26 +92,24 @@ namespace CardanoRbac.Cli
 
                 var policy = await RbacPolicy.FromJsonAsync(_inputStream);
 
-                IEnumerable<PermissionSubjects> permissions = policy.PermissionSubjects;
+                IEnumerable<RbacPermission> permissions;
 
-                if (subject != null)
+                if (subject != null && resource != null)
                 {
-                    permissions = permissions.Where(p => p.Subjects.Any(s => s == subject));
+                    permissions = policy.QueryPermissions(subject, resource);
                 }
-                if (resource != null)
+                else if (subject != null)
                 {
-                    permissions = permissions.Where(p => p.Permission.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase));
+                    permissions = policy.QueryPermissions(subject);
                 }
-
-                IEnumerable<RbacRole> roles = policy.Roles.Traverse(r => r.Roles);
-
-                if (subject != null)
+                else if (resource != null)
                 {
-                    roles = roles.Where(r => r.Subjects.Any(s => s == subject));
+                    permissions = policy.QueryPermissions(resource);
                 }
-                if (resource != null)
+                else
                 {
-                    roles = roles.Where(r => r.Permissions.Any(p => p.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)));
+                    Console.WriteLine("Missing --subject or --resource option.");
+                    return;
                 }
 
                 var options = new JsonSerializerOptions
@@ -128,12 +125,6 @@ namespace CardanoRbac.Cli
                 foreach (var permission in permissions)
                 {
                     Console.WriteLine(JsonSerializer.Serialize(permission, options));
-                }
-
-                Console.WriteLine(Environment.NewLine + "Roles:");
-                foreach (var role in roles)
-                {
-                    Console.WriteLine(JsonSerializer.Serialize(role, options));
                 }
             });
             rootCommand.Add(queryCommand);

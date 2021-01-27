@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using CardanoRbac.Extensions;
 using NJsonSchema;
 
 namespace CardanoRbac
@@ -74,6 +75,73 @@ namespace CardanoRbac
             var validationResult = schema.Validate(jsonText);
 
             return validationResult.Select(ve => new ValidationError { Message = ve?.ToString() });
+        }
+
+        public IEnumerable<RbacPermission> QueryPermissions(Uri subject)
+        {
+            var permissions = PermissionSubjects
+                .Where(ps => ps.Subjects.Any(s => s == subject))
+                .Select(ps => ps.Permission);
+
+            permissions = permissions.Concat(Roles
+                .Traverse(r => r.Roles)
+                .Where(r => r.Subjects.Any(s => s == subject))
+                .SelectMany(r => r.Permissions));
+
+            return permissions;
+        }
+
+        public IEnumerable<RbacPermission> QueryPermissions(string resource)
+        {
+            var permissions = PermissionSubjects
+                .Where(ps => ps.Permission.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase))
+                .Select(ps => ps.Permission);
+
+            permissions = permissions.Concat(Roles
+                .Traverse(r => r.Roles)
+                .SelectMany(r => r.Permissions)
+                .Where(p => p.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)));
+
+            return permissions;
+        }
+
+        public IEnumerable<RbacPermission> QueryPermissions(Uri subject, string resource)
+        {
+            var permissions = PermissionSubjects
+                .Where(ps => ps.Subjects.Any(s => s == subject)
+                    && ps.Permission.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase))
+                .Select(ps => ps.Permission);
+
+            permissions = permissions.Concat(Roles
+                .Traverse(r => r.Roles)
+                .Where(r => r.Subjects.Any(s => s == subject))
+                .SelectMany(r => r.Permissions)
+                .Where(p => p.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)));
+
+            return permissions;
+        }
+
+        public PermissionMode? ResolvePermissionMode(Uri subject, string resource, PermissionAction action)
+        {
+            var permissions = PermissionSubjects
+                .Where(ps => ps.Subjects.Any(s => s == subject)
+                    && ps.Permission.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)
+                    && ps.Permission.Action == action)
+                .Select(ps => ps.Permission);
+
+            permissions = permissions.Concat(Roles
+                .Traverse(r => r.Roles)
+                .Where(r => r.Subjects.Any(s => s == subject))
+                .SelectMany(r => r.Permissions)
+                .Where(p => p.Resource.Equals(resource, StringComparison.OrdinalIgnoreCase)
+                    && p.Action == action));
+
+            if (permissions.Any())
+            {
+                return permissions.Any(p => p.Mode == PermissionMode.deny) ? PermissionMode.deny : PermissionMode.grant;
+            }
+
+            return null;
         }
     }
 }

@@ -5,6 +5,5 @@ namespace CardanoRbac
     {
         grant,
         deny,
-        revoke,
     }
 }
