@@ -9,6 +9,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <RuntimeIdentifier>osx-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
