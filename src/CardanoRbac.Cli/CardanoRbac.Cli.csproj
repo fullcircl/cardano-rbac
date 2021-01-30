@@ -4,7 +4,7 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <TargetFramework>net5.0</TargetFramework>
-    <AssemblyName>dhclient</AssemblyName>
+    <AssemblyName>trbac</AssemblyName>
     <OutputType>Exe</OutputType>
     <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>true</PublishTrimmed>
