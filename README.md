@@ -7,7 +7,7 @@ We're designing a format specification (T-RBAC) and a .NET Core (and .NET 5) cla
 Transactional Role-based Access Control (T-RBAC) is a format specification we're designing to facilitate the storage of RBAC policies on UTXO-based blockchains like Cardano. See the latest draft here: https://docs.google.com/document/d/e/2PACX-1vR0a1tpsND8JbUjFI9jTx4uls3ivtL0odYHeQKwZbJ8LhqLEAQP4hSRzuqlfvXmFc8ihbxbqxwgBslB/pub
 
 ### JSON Schemas
-The T-RBAC JSON schemas are held in a separate "schemas" repository: https://github.com/torus-online/schemas/tree/main/rbac/draft
+The T-RBAC JSON schemas are held in a separate "schemas" repository: https://github.com/fullcircl/schemas/tree/main/rbac/draft
 
 ## CardanoRbac
 CardanoRbac is a .NET Standard 2.0 portable class library for interacting with RBAC policy metadata on the blockchain.
@@ -25,4 +25,4 @@ cardano-rbac is currently in early development stages. The schemas, class librar
 
 We recommend Visual Studio 2019 for easy debugging.
 
-Clone this repo, git clone https://github.com/torus-online/cardano-rbac.git
+Clone this repo, git clone https://github.com/fullcircl/cardano-rbac.git
