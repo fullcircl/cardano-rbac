@@ -12,7 +12,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="System.Text.Json" Version="5.0.2" />
-    <PackageReference Include="NJsonSchema" Version="10.4.1" />
+    <PackageReference Include="NJsonSchema" Version="10.4.5" />
   </ItemGroup>
     
   <ItemGroup> <!-- Select package version to resolve conflicts in NJsonSchema -->
